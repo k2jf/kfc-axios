@@ -129,6 +129,7 @@ const fetchEngine = function (config) {
 export default function (Vue, options) {
   const baseUrl = options.baseUrl || ''
   const keyName = options.keyName || 'K2_KEY'
+
   let login = options.login || function () {
     console.warn('currently no login method is provided. You may add this through: \n' +
       '1. in main.js, Vue.use(kfcFetch, {login: ...}) \n' +
@@ -142,6 +143,19 @@ export default function (Vue, options) {
     adapter: fetchEngine
   })
 
+  // recover the token
+  let token = sessionStorage.getItem('$kmx-auth-token') || ''
+  if (token) {
+    axios.defaults.headers.common[keyName] = token
+  }
+  window.addEventListener('unload', function saveTokenToSessionStorageAndSurviveThePageReload () {
+    // console.info('window is to unload');
+    if (token) {
+      sessionStorage.setItem('$kmx-auth-token', token)
+    }
+  })
+
+  // iview's message popup
   const tip = Vue.prototype.$Message
 
   axios.interceptors.response.use(function onSuccess (resp) {
@@ -205,7 +219,10 @@ export default function (Vue, options) {
   }
 
   axios.updateToken = function (newToken) {
-    axios.defaults.headers.common[keyName] = newToken
+    if (newToken && token !== newToken) {
+      token = newToken
+      axios.defaults.headers.common[keyName] = token
+    }
   }
 
   axios.updateLoginMethod = function (newMethod) {
